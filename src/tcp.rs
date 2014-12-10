@@ -141,6 +141,9 @@ impl<T> Iterator<T> for TcpReceiver<T> where T: Decodable<Decoder, DecoderError>
 
 #[cfg(test)]
 mod test {
+    use super::super::{Sender, Receiver};
+    use super::{TcpSender, TcpReceiver};
+
     #[deriving(Encodable, Decodable)]
     enum MyEnum {
         NoValue,
@@ -150,8 +153,8 @@ mod test {
     #[test]
     fn send_and_recv_string() {
         const ADDR: &'static str = "127.0.0.1:8080";
-        let mut receiver: super::TcpReceiver<String> = super::TcpReceiver::new(ADDR).unwrap();
-        let mut sender: super::TcpSender<String> = super::TcpSender::new(ADDR).unwrap();
+        let mut receiver: TcpReceiver<String> = TcpReceiver::new(ADDR).unwrap();
+        let mut sender: TcpSender<String> = TcpSender::new(ADDR).unwrap();
 
         sender.send("hello superchan!".into_string());
         assert_eq!("hello superchan!".into_string(), receiver.recv());
@@ -160,8 +163,8 @@ mod test {
     #[test]
     fn send_and_recv_int() {
         const ADDR: &'static str = "127.0.0.1:8081";
-        let mut receiver: super::TcpReceiver<int> = super::TcpReceiver::new(ADDR).unwrap();
-        let mut sender: super::TcpSender<int> = super::TcpSender::new(ADDR).unwrap();
+        let mut receiver: TcpReceiver<int> = TcpReceiver::new(ADDR).unwrap();
+        let mut sender: TcpSender<int> = TcpSender::new(ADDR).unwrap();
 
         sender.send(-13);
         assert_eq!(-13, receiver.recv());
@@ -170,8 +173,8 @@ mod test {
     #[test]
     fn send_and_recv_custom() {
         const ADDR: &'static str = "127.0.0.1:8082";
-        let mut receiver: super::TcpReceiver<MyEnum> = super::TcpReceiver::new(ADDR).unwrap();
-        let mut sender: super::TcpSender<MyEnum> = super::TcpSender::new(ADDR).unwrap();
+        let mut receiver: TcpReceiver<MyEnum> = TcpReceiver::new(ADDR).unwrap();
+        let mut sender: TcpSender<MyEnum> = TcpSender::new(ADDR).unwrap();
 
         sender.send(MyEnum::IntValue(3));
         match receiver.recv() {
@@ -183,9 +186,9 @@ mod test {
     #[test]
     fn multi_send() {
         const ADDR: &'static str = "127.0.0.1:8083";
-        let mut receiver: super::TcpReceiver<int> = super::TcpReceiver::new(ADDR).unwrap();
-        let mut sender1: super::TcpSender<int> = super::TcpSender::new(ADDR).unwrap();
-        let mut sender2: super::TcpSender<int> = super::TcpSender::new(ADDR).unwrap();
+        let mut receiver: TcpReceiver<int> = TcpReceiver::new(ADDR).unwrap();
+        let mut sender1: TcpSender<int> = TcpSender::new(ADDR).unwrap();
+        let mut sender2: TcpSender<int> = TcpSender::new(ADDR).unwrap();
 
         sender1.send(1);
         sender2.send(2);
