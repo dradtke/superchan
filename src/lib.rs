@@ -26,7 +26,7 @@
 //! The types used must be serializable and deserializable, so anything you send
 //! must either natively support it, or derive `Encodable` and `Decodable`:
 //!
-//! ~~~ignore
+//! ~~~
 //! extern crate serialize;
 //! extern crate superchan;
 //!
@@ -34,11 +34,12 @@
 //!
 //! #[deriving(Encodable, Decodable)]
 //! pub struct Message {
-//!     ...
+//!     subject: String,
+//!     body: String,
 //! }
 //!
 //! fn main() {
-//!     let mut receiver: TcpReceiver<Message> = TcpReceiver::new(/* ip address */);
+//!     let mut receiver: TcpReceiver<Message> = TcpReceiver::new("127.0.0.1:8080").unwrap();
 //!     // now you can receive messages of type `Message`
 //! }
 //! ~~~
