@@ -53,7 +53,7 @@ but which can be used to communicate over a network. For example, you may
 have a <code>server.rs</code> that accepts incoming connections:</p>
 <pre class='rust '>
 <span class='comment'>// server.rs</span>
-<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>receiver</span>: <span class='ident'>Receiver</span><span class='op'>&lt;</span>...<span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>superchan</span>::<span class='ident'>TcpReceiver</span>::<span class='ident'>new</span>(<span class='comment'>/* ip address */</span>);
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>receiver</span>: <span class='ident'>Receiver</span><span class='op'>&lt;</span>...<span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>superchan</span>::<span class='ident'>TcpReceiver</span>::<span class='ident'>new</span>(<span class='comment'>/* ip address, e.g. &quot;127.0.0.1:8080&quot; */</span>);
 <span class='kw'>let</span> <span class='ident'>value</span> <span class='op'>=</span> <span class='ident'>receiver</span>.<span class='ident'>recv</span>();
 <span class='comment'>// do something with `value`</span>
 </pre>

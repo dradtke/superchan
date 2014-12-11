@@ -6,7 +6,7 @@
 //!
 //! ~~~ignore
 //! // server.rs
-//! let mut receiver: Receiver<...> = superchan::TcpReceiver::new(/* ip address */);
+//! let mut receiver: Receiver<...> = superchan::TcpReceiver::new(/* ip address, e.g. "127.0.0.1:8080" */);
 //! let value = receiver.recv();
 //! // do something with `value`
 //! ~~~
