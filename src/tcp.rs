@@ -10,28 +10,31 @@ use std::sync::{Arc, Mutex};
 use super::ReceiverError;
 
 /// `TcpSender` is the sender half of a TCP connection.
-pub struct TcpSender<T>(Arc<Mutex<TcpStream>>);
+pub struct TcpSender<T>(Sender<T>);
 
-impl<T> TcpSender<T> {
+impl<T> TcpSender<T> where T: Encodable<Encoder<'static>, IoError> + Send {
     /// Create a new TcpSender (aka TCP client) for the specified address. It will
     /// fail if no TcpReceiver (aka TCP server) is waiting to receive the connection.
+    #[allow(unused_must_use)]
     pub fn new<A: ToSocketAddr>(addr: A) -> IoResult<TcpSender<T>> {
-        Ok(TcpSender(Arc::new(Mutex::new(try!(TcpStream::connect(addr))))))
+        let (tx, rx) = channel();
+        let mut stream = try!(TcpStream::connect(addr));
+        spawn(proc() {
+            for t in rx.iter() {
+                let e = Encoder::buffer_encode(&t);
+                stream.write_le_uint(e.len());
+                stream.write(e.as_slice());
+                stream.flush();
+            }
+        });
+        Ok(TcpSender(tx))
     }
 }
 
 impl<T> super::Sender<T> for TcpSender<T> where T: Encodable<Encoder<'static>, IoError> + Send {
     /// Non-blocking send along the channel.
-    #[allow(unused_must_use)]
     fn send(&mut self, t: T) {
-        let stream = self.0.clone();
-        spawn(proc() {
-            let e = Encoder::buffer_encode(&t);
-            let mut stream = stream.lock();
-            stream.write_le_uint(e.len());
-            stream.write(e.as_slice());
-            stream.flush();
-        });
+        self.0.send(t);
     }
 }
 
