@@ -1,0 +1,11 @@
+[package]
+
+name = "client"
+version = "0.0.1"
+authors = ["Damien Radtke <dradtke@channeliq.com>"]
+
+[dependencies.msg]
+path = "../msg"
+
+[dependencies.superchan]
+path = "../.."

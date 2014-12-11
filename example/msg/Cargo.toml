@@ -1,0 +1,5 @@
+[package]
+
+name = "msg"
+version = "0.0.1"
+authors = ["Damien Radtke <dradtke@channeliq.com>"]
