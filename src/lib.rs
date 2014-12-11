@@ -72,15 +72,17 @@ pub use tcp::TcpReceiver as TcpReceiver;
 
 use serialize::{Decodable, Encodable};
 use serialize::json::{Decoder, DecoderError, Encoder};
+use std::comm;
 use std::error::{Error, FromError};
-use std::io::{IoError, IoErrorKind};
+use std::io::{IoError, IoErrorKind, IoResult};
+use std::sync::Future;
 
 pub mod tcp;
 
 /// Sender is a generic trait for objects that are able to send values
 /// across a network.
 pub trait Sender<T> where T: Encodable<Encoder<'static>, IoError> + Send {
-    fn send(&mut self, t: T);
+    fn send(&mut self, t: T) -> Future<IoResult<()>>;
 }
 
 /// Receiver is a generic trait for objects that are able to receive
@@ -143,3 +145,6 @@ impl ReceiverError {
         }
     }
 }
+
+/// Contains a type to be sent and a channel for sending the response.
+type SendRequest<T: Send> = (T, comm::Sender<IoResult<()>>);

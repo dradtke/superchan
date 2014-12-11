@@ -7,25 +7,27 @@ use std::comm;
 use std::io::{IoError, IoErrorKind, IoResult, TcpStream};
 use std::io::net::ip::ToSocketAddr;
 use std::io::net::tcp::TcpAcceptor;
-use std::sync::{Arc, Mutex};
-use super::ReceiverError;
+use std::sync::{Arc, Future, Mutex};
+use super::{SendRequest, ReceiverError};
 
 /// `TcpSender` is the sender half of a TCP connection.
-pub struct TcpSender<T>(comm::Sender<T>);
+pub struct TcpSender<T>(comm::Sender<SendRequest<T>>);
 
 impl<T> TcpSender<T> where T: Encodable<Encoder<'static>, IoError> + Send {
     /// Create a new TcpSender (aka TCP client) for the specified address. It will
     /// fail if no TcpReceiver (aka TCP server) is waiting to receive the connection.
     #[allow(unused_must_use)]
     pub fn new<A: ToSocketAddr>(addr: A) -> IoResult<TcpSender<T>> {
-        let (tx, rx) = comm::channel();
+        let (tx, rx) = comm::channel::<SendRequest<T>>();
         let mut stream = try!(TcpStream::connect(addr));
         spawn(proc() {
-            for t in rx.iter() {
+            for (t, fi) in rx.iter() {
                 let e = Encoder::buffer_encode(&t);
                 stream.write_le_uint(e.len());
                 stream.write(e.as_slice());
                 stream.flush();
+                // TODO: use the responses from the above calls to send an error if appropriate
+                fi.send(Ok(()));
             }
         });
         Ok(TcpSender(tx))
@@ -34,8 +36,10 @@ impl<T> TcpSender<T> where T: Encodable<Encoder<'static>, IoError> + Send {
 
 impl<T> super::Sender<T> for TcpSender<T> where T: Encodable<Encoder<'static>, IoError> + Send {
     /// Non-blocking send along the channel.
-    fn send(&mut self, t: T) {
-        self.0.send(t);
+    fn send(&mut self, t: T) -> Future<IoResult<()>> {
+        let (fi, fo) = comm::channel();
+        self.0.send((t, fi));
+        Future::from_receiver(fo)
     }
 }
 
