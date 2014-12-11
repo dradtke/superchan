@@ -44,7 +44,7 @@
 <h1 class='fqn'><span class='in-band'>Crate <a class='mod' href=''>superchan</a><wbr><a class='stability Experimental' title=''>Experimental</a></span><span class='out-of-band'><a href='stability.html'>[stability]</a> <span id='render-detail'>
             <a id="collapse-all" href="#">[-]
             </a>&nbsp;<a id="expand-all" href="#">[+]</a>
-        </span><a id='src-0' href='../src/superchan/lib.rs.html#1-139'>[src]</a></span></h1>
+        </span><a id='src-0' href='../src/superchan/lib.rs.html#1-144'>[src]</a></span></h1>
 <div class='docblock'>
 <h1 id="superchan!" class='section-header'><a
                            href="#superchan!">Superchan!</a></h1>
@@ -53,7 +53,8 @@ but which can be used to communicate over a network. For example, you may
 have a <code>server.rs</code> that accepts incoming connections:</p>
 <pre class='rust '>
 <span class='comment'>// server.rs</span>
-<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>receiver</span>: <span class='ident'>Receiver</span><span class='op'>&lt;</span>...<span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>superchan</span>::<span class='ident'>TcpReceiver</span>::<span class='ident'>new</span>(<span class='comment'>/* ip address, e.g. &quot;127.0.0.1:8080&quot; */</span>);
+<span class='kw'>use</span> <span class='ident'>superchan</span>::<span class='ident'>TcpReceiver</span>;
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>receiver</span>: <span class='ident'>TcpReceiver</span><span class='op'>&lt;</span>...<span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>TcpReceiver</span>::<span class='ident'>new</span>(<span class='comment'>/* ip address, e.g. &quot;127.0.0.1:8080&quot; */</span>);
 <span class='kw'>let</span> <span class='ident'>value</span> <span class='op'>=</span> <span class='ident'>receiver</span>.<span class='ident'>recv</span>();
 <span class='comment'>// do something with `value`</span>
 </pre>
@@ -62,7 +63,8 @@ have a <code>server.rs</code> that accepts incoming connections:</p>
 or even on a different computer:</p>
 <pre class='rust '>
 <span class='comment'>// client.rs</span>
-<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>sender</span>: <span class='ident'>Sender</span><span class='op'>&lt;</span>...<span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>superchan</span>::<span class='ident'>TcpSender</span>::<span class='ident'>new</span>(<span class='comment'>/* ip address */</span>);
+<span class='kw'>use</span> <span class='ident'>superchan</span>::<span class='ident'>TcpSender</span>;
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>sender</span>: <span class='ident'>TcpSender</span><span class='op'>&lt;</span>...<span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>TcpSender</span>::<span class='ident'>new</span>(<span class='comment'>/* ip address */</span>);
 <span class='kw'>let</span> <span class='ident'>value</span> <span class='op'>=</span> ...;
 <span class='ident'>sender</span>.<span class='ident'>send</span>(<span class='ident'>value</span>);
 </pre>
@@ -71,6 +73,9 @@ or even on a different computer:</p>
 must either natively support it, or derive <code>Encodable</code> and <code>Decodable</code>:</p>
 <pre class='rust '>
 <span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>serialize</span>;
+<span class='kw'>extern</span> <span class='kw'>crate</span> <span class='ident'>superchan</span>;
+
+<span class='kw'>use</span> <span class='ident'>superchan</span>::<span class='ident'>TcpReceiver</span>;
 
 <span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Encodable</span>, <span class='ident'>Decodable</span>)]</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Message</span> {
@@ -78,7 +83,7 @@ must either natively support it, or derive <code>Encodable</code> and <code>Deco
 }
 
 <span class='kw'>fn</span> <span class='ident'>main</span>() {
-    <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>receiver</span>: <span class='ident'>Receiver</span><span class='op'>&lt;</span><span class='ident'>Message</span><span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>superchan</span>::<span class='ident'>TcpReceiver</span>::<span class='ident'>new</span>(<span class='comment'>/* ip address */</span>);
+    <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>receiver</span>: <span class='ident'>TcpReceiver</span><span class='op'>&lt;</span><span class='ident'>Message</span><span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>TcpReceiver</span>::<span class='ident'>new</span>(<span class='comment'>/* ip address */</span>);
     <span class='comment'>// now you can receive messages of type `Message`</span>
 }
 </pre>

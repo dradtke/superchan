@@ -179,6 +179,11 @@
 <span id='137'>137</span>
 <span id='138'>138</span>
 <span id='139'>139</span>
+<span id='140'>140</span>
+<span id='141'>141</span>
+<span id='142'>142</span>
+<span id='143'>143</span>
+<span id='144'>144</span>
 </pre><pre class='rust '>
 <span class='doccomment'>//! # Superchan!</span>
 <span class='doccomment'>//!</span>
@@ -188,7 +193,8 @@
 <span class='doccomment'>//!</span>
 <span class='doccomment'>//! ~~~ignore</span>
 <span class='doccomment'>//! // server.rs</span>
-<span class='doccomment'>//! let mut receiver: Receiver&lt;...&gt; = superchan::TcpReceiver::new(/* ip address, e.g. &quot;127.0.0.1:8080&quot; */);</span>
+<span class='doccomment'>//! use superchan::TcpReceiver;</span>
+<span class='doccomment'>//! let mut receiver: TcpReceiver&lt;...&gt; = TcpReceiver::new(/* ip address, e.g. &quot;127.0.0.1:8080&quot; */);</span>
 <span class='doccomment'>//! let value = receiver.recv();</span>
 <span class='doccomment'>//! // do something with `value`</span>
 <span class='doccomment'>//! ~~~</span>
@@ -198,7 +204,8 @@
 <span class='doccomment'>//!</span>
 <span class='doccomment'>//! ~~~ignore</span>
 <span class='doccomment'>//! // client.rs</span>
-<span class='doccomment'>//! let mut sender: Sender&lt;...&gt; = superchan::TcpSender::new(/* ip address */);</span>
+<span class='doccomment'>//! use superchan::TcpSender;</span>
+<span class='doccomment'>//! let mut sender: TcpSender&lt;...&gt; = TcpSender::new(/* ip address */);</span>
 <span class='doccomment'>//! let value = ...;</span>
 <span class='doccomment'>//! sender.send(value);</span>
 <span class='doccomment'>//! ~~~</span>
@@ -208,6 +215,9 @@
 <span class='doccomment'>//!</span>
 <span class='doccomment'>//! ~~~ignore</span>
 <span class='doccomment'>//! extern crate serialize;</span>
+<span class='doccomment'>//! extern crate superchan;</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! use superchan::TcpReceiver;</span>
 <span class='doccomment'>//!</span>
 <span class='doccomment'>//! #[deriving(Encodable, Decodable)]</span>
 <span class='doccomment'>//! pub struct Message {</span>
@@ -215,7 +225,7 @@
 <span class='doccomment'>//! }</span>
 <span class='doccomment'>//!</span>
 <span class='doccomment'>//! fn main() {</span>
-<span class='doccomment'>//!     let mut receiver: Receiver&lt;Message&gt; = superchan::TcpReceiver::new(/* ip address */);</span>
+<span class='doccomment'>//!     let mut receiver: TcpReceiver&lt;Message&gt; = TcpReceiver::new(/* ip address */);</span>
 <span class='doccomment'>//!     // now you can receive messages of type `Message`</span>
 <span class='doccomment'>//! }</span>
 <span class='doccomment'>//! ~~~</span>

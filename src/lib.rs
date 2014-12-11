@@ -6,7 +6,8 @@
 //!
 //! ~~~ignore
 //! // server.rs
-//! let mut receiver: Receiver<...> = superchan::TcpReceiver::new(/* ip address, e.g. "127.0.0.1:8080" */);
+//! use superchan::TcpReceiver;
+//! let mut receiver: TcpReceiver<...> = TcpReceiver::new(/* ip address, e.g. "127.0.0.1:8080" */);
 //! let value = receiver.recv();
 //! // do something with `value`
 //! ~~~
@@ -16,7 +17,8 @@
 //!
 //! ~~~ignore
 //! // client.rs
-//! let mut sender: Sender<...> = superchan::TcpSender::new(/* ip address */);
+//! use superchan::TcpSender;
+//! let mut sender: TcpSender<...> = TcpSender::new(/* ip address */);
 //! let value = ...;
 //! sender.send(value);
 //! ~~~
@@ -26,6 +28,9 @@
 //!
 //! ~~~ignore
 //! extern crate serialize;
+//! extern crate superchan;
+//!
+//! use superchan::TcpReceiver;
 //!
 //! #[deriving(Encodable, Decodable)]
 //! pub struct Message {
@@ -33,7 +38,7 @@
 //! }
 //!
 //! fn main() {
-//!     let mut receiver: Receiver<Message> = superchan::TcpReceiver::new(/* ip address */);
+//!     let mut receiver: TcpReceiver<Message> = TcpReceiver::new(/* ip address */);
 //!     // now you can receive messages of type `Message`
 //! }
 //! ~~~
