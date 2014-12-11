@@ -3,3 +3,8 @@
 name = "superchan"
 version = "0.0.1"
 authors = ["Damien Radtke <dradtke@channeliq.com>"]
+
+description = "Communicate over a network using a channel-like API."
+repository = "https://github.com/dradtke/superchan"
+keywords = ["network", "tcp", "channel"]
+license = "MIT"
