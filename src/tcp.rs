@@ -125,20 +125,6 @@ impl<T> Drop for TcpReceiver<T> {
     }
 }
 
-/*
-impl<T> Iterator<T> for TcpReceiver<T> where T: Decodable<Decoder, DecoderError> {
-    fn next(&mut self) -> Option<T> {
-        match self.try_recv() {
-            Ok(x) => Some(x),
-            Err(ref err) if err.is_eof() => None,
-            Err(e) => panic!("{}", e),
-        }
-    }
-}
-*/
-
-/* -- Error Handling -- */
-
 #[cfg(test)]
 mod test {
     use super::super::{Sender, Receiver};
