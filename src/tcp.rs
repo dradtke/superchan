@@ -3,6 +3,7 @@
 
 use serialize::{Decodable, Encodable};
 use serialize::json::{Decoder, DecoderError, decode, Encoder};
+use std::comm;
 use std::io::{IoError, IoErrorKind, IoResult, TcpStream};
 use std::io::net::ip::ToSocketAddr;
 use std::io::net::tcp::TcpAcceptor;
@@ -10,14 +11,14 @@ use std::sync::{Arc, Mutex};
 use super::ReceiverError;
 
 /// `TcpSender` is the sender half of a TCP connection.
-pub struct TcpSender<T>(Sender<T>);
+pub struct TcpSender<T>(comm::Sender<T>);
 
 impl<T> TcpSender<T> where T: Encodable<Encoder<'static>, IoError> + Send {
     /// Create a new TcpSender (aka TCP client) for the specified address. It will
     /// fail if no TcpReceiver (aka TCP server) is waiting to receive the connection.
     #[allow(unused_must_use)]
     pub fn new<A: ToSocketAddr>(addr: A) -> IoResult<TcpSender<T>> {
-        let (tx, rx) = channel();
+        let (tx, rx) = comm::channel();
         let mut stream = try!(TcpStream::connect(addr));
         spawn(proc() {
             for t in rx.iter() {
