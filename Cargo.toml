@@ -1,10 +1,11 @@
 [package]
 
 name = "superchan"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Damien Radtke <dradtke@channeliq.com>"]
 
 description = "Communicate over a network using a channel-like API."
 repository = "https://github.com/dradtke/superchan"
+documentation = "http://www.rust-ci.org/dradtke/superchan/doc/superchan/"
 keywords = ["network", "tcp", "channel"]
 license = "MIT"

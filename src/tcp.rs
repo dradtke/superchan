@@ -19,9 +19,8 @@ impl<T> super::Sender<T> for ClientSender<T> where T: Encodable<Encoder<'static>
         self.0.send((t, fi));
         // Future::from_receiver() doesn't work here. It causes the `fi` Sender to close before it
         // gets a chance to send the response. For some reason though, spawning it into a new
-        // proc() works.
-        //Future::spawn(move |:| { fo.recv() })
-        Future::spawn(proc() { fo.recv() })
+        // proc works.
+        Future::spawn(move || { fo.recv() })
     }
 }
 
@@ -39,7 +38,7 @@ pub fn client_channel<A: ToSocketAddr, T: Encodable<Encoder<'static>, IoError> +
     let (ss, sr) = comm::channel::<SendRequest<T>>();
     {
         let stream = stream.clone();
-        spawn(proc() {
+        spawn(move || {
             for (t, fi) in sr.iter() {
                 let mut stream = stream.lock();
                 let e = Encoder::buffer_encode(&t);
@@ -54,7 +53,7 @@ pub fn client_channel<A: ToSocketAddr, T: Encodable<Encoder<'static>, IoError> +
     let (rs, rr) = comm::channel::<Result<S, ReceiverError>>();
     {
         let stream = stream.clone();
-        spawn(proc() {
+        spawn(move || {
             loop {
                 {
                     let mut stream = stream.lock();
@@ -85,7 +84,7 @@ pub fn server_channel<A: ToSocketAddr, T: Encodable<Encoder<'static>, IoError> +
         for conn in acceptor.incoming() {
             match conn {
                 Ok(mut conn) => {
-                    spawn(proc() {
+                    spawn(move || {
                         loop {
                             let item = match conn.read_le_uint() {
                                 Ok(size) => match read_item(&mut conn, size) {
