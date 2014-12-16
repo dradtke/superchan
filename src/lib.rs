@@ -1,65 +1,10 @@
 //! # Superchan!
 //!
 //! This crate provides a set of types that mimick Rust's native channels,
-//! but which can be used to communicate over a network. For example, you may
-//! have a `server.rs` that accepts incoming connections:
+//! but which can be used to communicate over a network.
 //!
-//! ~~~ignore
-//! // server.rs
-//! use superchan::TcpReceiver;
-//! let mut receiver: TcpReceiver<...> = TcpReceiver::new(/* ip address, e.g. "127.0.0.1:8080" */);
-//! let value = receiver.recv();
-//! // do something with `value`
-//! ~~~
-//!
-//! ...and then send values to it from some `client.rs` running in a different process,
-//! or even on a different computer:
-//!
-//! ~~~ignore
-//! // client.rs
-//! use superchan::TcpSender;
-//! let mut sender: TcpSender<...> = TcpSender::new(/* ip address */);
-//! let value = ...;
-//! sender.send(value);
-//! ~~~
-//!
-//! The types used must be serializable and deserializable, so anything you send
-//! must either natively support it, or derive `Encodable` and `Decodable`:
-//!
-//! ~~~
-//! extern crate serialize;
-//! extern crate superchan;
-//!
-//! use superchan::TcpReceiver;
-//!
-//! #[deriving(Encodable, Decodable)]
-//! pub struct Message {
-//!     subject: String,
-//!     body: String,
-//! }
-//!
-//! fn main() {
-//!     let mut receiver: TcpReceiver<Message> = TcpReceiver::new("127.0.0.1:8080").unwrap();
-//!     // now you can receive messages of type `Message`
-//! }
-//! ~~~
-//!
-//! Naturally, if custom types are sent across the wire, then both the client and server
-//! will need access to the type definition. Attempting to receive a value of a different
-//! type than the one that was sent is unsupported, untested, and may even go as far as to
-//! release the hounds.
-//!
-//! # Protocols
-//!
-//! Right now the only supported protocol is TCP, but more will be added in the hopefully
-//! not-too-distant future.
-//!
-//! # Formats
-//!
-//! The Rust standard library currently only comes with one general-purpose serialization format,
-//! which is JSON, so currently all implemented channels encode and decode their data
-//! to and from JSON. Hopefully the advent of protocol buffers will eventually render this
-//! unnecessary. =)
+//! This is only an experimental crate, and its API is still subject to very drastic changes.
+//! Use at your own risk. =)
 
 #![crate_name = "superchan"]
 #![experimental]
