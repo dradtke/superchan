@@ -1,15 +1,16 @@
 extern crate msg;
 extern crate superchan;
 
-use msg::Message;
+use msg::{Message, Response};
 use std::io;
-use superchan::{Sender, TcpSender};
+use superchan::{Sender, Receiver};
+use superchan::tcp;
 
 fn main() {
     println!("Connecting to server...");
-    let mut sender: TcpSender<Message> = match TcpSender::new("127.0.0.1:8080") {
-        Ok(sender) => sender,
-        Err(e) => { println!("Failed to start server: {}", e); return; },
+    let (mut sender, mut receiver): (tcp::ClientSender<Message>, tcp::ClientReceiver<Response>) = match tcp::client_channel("127.0.0.1:8080") {
+        Ok(chans) => chans,
+        Err(e) => { println!("{}", e); return; },
     };
     println!("Waiting for input.");
 
@@ -27,6 +28,7 @@ fn main() {
                 } else {
                     sender.send(Message::String(s));
                 }
+                println!("response: {}", receiver.recv());
             },
             Err(e) => println!("error: {}", e),
         }

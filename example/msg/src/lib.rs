@@ -6,3 +6,9 @@ pub enum Message {
     Int(int),
     String(String),
 }
+
+#[deriving(Encodable, Decodable, Show)]
+pub enum Response {
+    Ok,
+    NotOk,
+}

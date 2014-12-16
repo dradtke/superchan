@@ -63,12 +63,9 @@
 
 #![crate_name = "superchan"]
 #![experimental]
-#![feature(globs, unsafe_destructor)]
+#![feature(globs, unboxed_closures, unsafe_destructor)]
 #![allow(dead_code)]
 extern crate serialize;
-
-pub use tcp::TcpSender as TcpSender;
-pub use tcp::TcpReceiver as TcpReceiver;
 
 use serialize::{Decodable, Encodable};
 use serialize::json::{Decoder, DecoderError, Encoder};
@@ -87,10 +84,10 @@ pub trait Sender<T> where T: Encodable<Encoder<'static>, IoError> + Send {
 
 /// Receiver is a generic trait for objects that are able to receive
 /// values from across a network.
-pub trait Receiver<T> where T: Decodable<Decoder, DecoderError> {
-    fn try_recv(&mut self) -> Result<T, ReceiverError>;
+pub trait Receiver<S> where S: Decodable<Decoder, DecoderError> + Send {
+    fn try_recv(&mut self) -> Result<S, ReceiverError>;
 
-    fn recv(&mut self) -> T {
+    fn recv(&mut self) -> S {
         match self.try_recv() {
             Ok(val) => val,
             Err(e) => panic!("{}", e),
@@ -147,4 +144,4 @@ impl ReceiverError {
 }
 
 /// Contains a type to be sent and a channel for sending the response.
-type SendRequest<T: Send> = (T, comm::Sender<IoResult<()>>);
+type SendRequest<T> = (T, comm::Sender<IoResult<()>>);

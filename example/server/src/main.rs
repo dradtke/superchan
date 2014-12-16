@@ -1,24 +1,19 @@
 extern crate msg;
 extern crate superchan;
 
-use msg::Message;
-use std::error::Error;
-use superchan::{Receiver, TcpReceiver};
+use msg::{Message, Response};
+use superchan::tcp::server_channel;
 
+fn handle_client(msg: Message) -> Response {
+    match msg {
+        Message::Blank => { println!("received blank message"); Response::NotOk },
+        Message::Int(i) => { println!("received int message: {}", i); Response::Ok },
+        Message::String(s) => { println!("received string message: {}", s); Response::Ok },
+    }
+}
+
+#[allow(unused_must_use)]
 fn main() {
     println!("Starting server...");
-    let mut receiver: TcpReceiver<Message> = match TcpReceiver::new("127.0.0.1:8080") {
-        Ok(receiver) => receiver,
-        Err(e) => { println!("Failed to start server: {}", e); return; },
-    };
-    println!("Listening for clients.");
-
-    loop {
-        match receiver.try_recv() {
-            Ok(Message::Blank) => println!("Received blank message."),
-            Ok(Message::Int(i)) => println!("Received int message: {}.", i),
-            Ok(Message::String(s)) => println!("Received string message: {}.", s),
-            Err(ref e) => println!("Error: {}", (e as &Error).description()),
-        }
-    }
+    server_channel("127.0.0.1:8080", handle_client);
 }

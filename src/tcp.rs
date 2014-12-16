@@ -6,22 +6,42 @@ use serialize::json::{Decoder, DecoderError, decode, Encoder};
 use std::comm;
 use std::io::{IoError, IoErrorKind, IoResult, TcpStream};
 use std::io::net::ip::ToSocketAddr;
-use std::io::net::tcp::TcpAcceptor;
 use std::sync::{Arc, Future, Mutex};
+use std::task;
 use super::{SendRequest, ReceiverError};
 
-/// `TcpSender` is the sender half of a TCP connection.
-pub struct TcpSender<T>(comm::Sender<SendRequest<T>>);
+#[deriving(Clone)]
+pub struct ClientSender<T: Encodable<Encoder<'static>, IoError> + Send>(comm::Sender<SendRequest<T>>);
 
-impl<T> TcpSender<T> where T: Encodable<Encoder<'static>, IoError> + Send {
-    /// Create a new TcpSender (aka TCP client) for the specified address. It will
-    /// fail if no TcpReceiver (aka TCP server) is waiting to receive the connection.
-    #[allow(unused_must_use)]
-    pub fn new<A: ToSocketAddr>(addr: A) -> IoResult<TcpSender<T>> {
-        let (tx, rx) = comm::channel::<SendRequest<T>>();
-        let mut stream = try!(TcpStream::connect(addr));
+impl<T> super::Sender<T> for ClientSender<T> where T: Encodable<Encoder<'static>, IoError> + Send {
+    fn send(&mut self, t: T) -> Future<IoResult<()>> {
+        let (fi, fo) = comm::channel();
+        self.0.send((t, fi));
+        // Future::from_receiver() doesn't work here. It causes the `fi` Sender to close before it
+        // gets a chance to send the response. For some reason though, spawning it into a new
+        // proc() works.
+        //Future::spawn(move |:| { fo.recv() })
+        Future::spawn(proc() { fo.recv() })
+    }
+}
+
+pub struct ClientReceiver<S: Decodable<Decoder, DecoderError> + Send>(comm::Receiver<Result<S, ReceiverError>>);
+
+impl<S> super::Receiver<S> for ClientReceiver<S> where S: Decodable<Decoder, DecoderError> + Send {
+    fn try_recv(&mut self) -> Result<S, ReceiverError> {
+        self.0.recv()
+    }
+}
+
+#[allow(unused_must_use)]
+pub fn client_channel<A: ToSocketAddr, T: Encodable<Encoder<'static>, IoError> + Send, S: Decodable<Decoder, DecoderError> + Send>(addr: A) -> IoResult<(ClientSender<T>, ClientReceiver<S>)> {
+    let stream = Arc::new(Mutex::new(try!(TcpStream::connect(addr))));
+    let (ss, sr) = comm::channel::<SendRequest<T>>();
+    {
+        let stream = stream.clone();
         spawn(proc() {
-            for (t, fi) in rx.iter() {
+            for (t, fi) in sr.iter() {
+                let mut stream = stream.lock();
                 let e = Encoder::buffer_encode(&t);
                 stream.write_le_uint(e.len());
                 stream.write(e.as_slice());
@@ -30,163 +50,70 @@ impl<T> TcpSender<T> where T: Encodable<Encoder<'static>, IoError> + Send {
                 fi.send(Ok(()));
             }
         });
-        Ok(TcpSender(tx))
     }
-}
-
-impl<T> super::Sender<T> for TcpSender<T> where T: Encodable<Encoder<'static>, IoError> + Send {
-    /// Non-blocking send along the channel.
-    fn send(&mut self, t: T) -> Future<IoResult<()>> {
-        let (fi, fo) = comm::channel();
-        self.0.send((t, fi));
-        Future::from_receiver(fo)
-    }
-}
-
-/// TcpReceiver is the receiver half of a TCP connection.
-pub struct TcpReceiver<T> {
-    streams: Arc<Mutex<Vec<TcpStream>>>,
-    acceptor: TcpAcceptor,
-    closed: bool,
-}
-
-impl<T> TcpReceiver<T> {
-    /// Create a new TcpReceiver (aka TCP server) bound to the specified address.
-    #[allow(unused_must_use)]
-    pub fn new<A: ToSocketAddr>(addr: A) -> IoResult<TcpReceiver<T>> {
-        use std::io::{Acceptor, Listener};
-        use std::io::net::tcp::TcpListener;
-
-        let streams = Arc::new(Mutex::new(Vec::new()));
-
-        let listener = try!(TcpListener::bind(addr));
-        let acceptor = try!(listener.listen());
-        {
-            let streams = streams.clone();
-            let mut acceptor = acceptor.clone();
-            spawn(proc() {
-                for stream in acceptor.incoming() {
-                    let mut streams = streams.lock();
-                    match stream {
-                        Ok(stream) => streams.push(stream),
+    let (rs, rr) = comm::channel::<Result<S, ReceiverError>>();
+    {
+        let stream = stream.clone();
+        spawn(proc() {
+            loop {
+                {
+                    let mut stream = stream.lock();
+                    stream.set_read_timeout(Some(10)); // TODO: config value?
+                    match stream.read_le_uint() {
+                        Ok(size) => rs.send(read_item(&mut (*stream), size)),
+                        Err(ref e) if e.kind == IoErrorKind::TimedOut => (), // no data available
                         Err(ref e) if e.kind == IoErrorKind::EndOfFile => return,
-                        Err(e) => panic!("{}", e),
+                        Err(e) => rs.send(Err(ReceiverError::IoError(e))),
                     }
                 }
-            });
-        }
-
-        Ok(TcpReceiver{ streams: streams, acceptor: acceptor, closed: false })
-    }
-}
-
-impl<T> super::Receiver<T> for TcpReceiver<T> where T: Decodable<Decoder, DecoderError> {
-    /// Attempt to receive a value on the channel. This method blocks until a value
-    /// is available.
-    fn try_recv(&mut self) -> Result<T, ReceiverError> {
-        use std::task;
-        let mut finished = Vec::new();
-        loop {
-            {
-                if self.closed {
-                    return Err(ReceiverError::EndOfFile);
-                }
-                let mut streams = self.streams.lock();
-                let mut found = None;
-                for (i, stream) in streams.iter_mut().enumerate() {
-                    stream.set_read_timeout(Some(10)); // TODO: set this value as a config?
-                    let size = match stream.read_le_uint() {
-                        Ok(size) => size,
-                        Err(ref e) if e.kind == IoErrorKind::TimedOut => continue,
-                        Err(ref e) if e.kind == IoErrorKind::EndOfFile => { finished.push(i); continue },
-                        Err(e) => return Err(ReceiverError::IoError(e)),
-                    };
-                    let data = try!(stream.read_exact(size));
-                    let string = try!(String::from_utf8(data));
-                    let decoded = try!(decode::<T>(string.as_slice()));
-                    found = Some(decoded);
-                    break;
-                }
-                if finished.len() > 0 {
-                    let mut offset = 0u;
-                    for i in finished.iter() {
-                        streams.remove(*i - offset);
-                        offset += 1;
-                    }
-                    finished.clear();
-                }
-                if let Some(decoded) = found {
-                    return Ok(decoded);
-                }
+                task::deschedule();
             }
-            task::deschedule();
-        }
+        });
     }
+    Ok((ClientSender(ss), ClientReceiver(rr)))
 }
 
-#[unsafe_destructor]
-impl<T> Drop for TcpReceiver<T> {
-    #[allow(unused_must_use)]
-    fn drop(&mut self) {
-        self.acceptor.close_accept();
-        self.closed = true;
-    }
-}
+#[allow(unused_must_use)]
+pub fn server_channel<A: ToSocketAddr, T: Encodable<Encoder<'static>, IoError> + Send, S: Decodable<Decoder, DecoderError> + Send, F: Fn(S) -> T + Copy + Send>(addr: A, handle: F) -> IoResult<()> {
+    use std::io::{Acceptor, Listener};
+    use std::io::net::tcp::TcpListener;
 
-#[cfg(test)]
-mod test {
-    use super::super::{Sender, Receiver};
-    use super::{TcpSender, TcpReceiver};
-
-    #[deriving(Encodable, Decodable)]
-    enum MyEnum {
-        NoValue,
-        IntValue(int),
-    }
-
-    #[test]
-    fn send_and_recv_string() {
-        const ADDR: &'static str = "127.0.0.1:8080";
-        let mut receiver: TcpReceiver<String> = TcpReceiver::new(ADDR).unwrap();
-        let mut sender: TcpSender<String> = TcpSender::new(ADDR).unwrap();
-
-        sender.send("hello superchan!".into_string());
-        assert_eq!("hello superchan!".into_string(), receiver.recv());
-    }
-
-    #[test]
-    fn send_and_recv_int() {
-        const ADDR: &'static str = "127.0.0.1:8081";
-        let mut receiver: TcpReceiver<int> = TcpReceiver::new(ADDR).unwrap();
-        let mut sender: TcpSender<int> = TcpSender::new(ADDR).unwrap();
-
-        sender.send(-13);
-        assert_eq!(-13, receiver.recv());
-    }
-
-    #[test]
-    fn send_and_recv_custom() {
-        const ADDR: &'static str = "127.0.0.1:8082";
-        let mut receiver: TcpReceiver<MyEnum> = TcpReceiver::new(ADDR).unwrap();
-        let mut sender: TcpSender<MyEnum> = TcpSender::new(ADDR).unwrap();
-
-        sender.send(MyEnum::IntValue(3));
-        match receiver.recv() {
-            MyEnum::IntValue(val) => assert_eq!(val, 3),
-            _ => panic!("received unexpected MyEnum value"),
+    let listener = try!(TcpListener::bind(addr));
+    let acceptor = try!(listener.listen());
+    {
+        let mut acceptor = acceptor.clone();
+        for conn in acceptor.incoming() {
+            match conn {
+                Ok(mut conn) => {
+                    spawn(proc() {
+                        loop {
+                            let item = match conn.read_le_uint() {
+                                Ok(size) => match read_item(&mut conn, size) {
+                                    Ok(item) => item,
+                                    Err(e) => panic!(e),
+                                },
+                                Err(ref e) if e.kind == IoErrorKind::TimedOut => continue, // ignore
+                                Err(ref e) if e.kind == IoErrorKind::EndOfFile => return,
+                                Err(e) => panic!("{}", e),
+                            };
+                            let resp = handle(item); // TODO: add a client id
+                            let e = Encoder::buffer_encode(&resp);
+                            conn.write_le_uint(e.len());
+                            conn.write(e.as_slice());
+                            conn.flush();
+                        }
+                    });
+                },
+                Err(ref e) if e.kind == IoErrorKind::EndOfFile => break,
+                Err(e) => panic!(e),
+            }
         }
     }
+    Ok(())
+}
 
-    #[test]
-    fn multi_send() {
-        const ADDR: &'static str = "127.0.0.1:8083";
-        let mut receiver: TcpReceiver<int> = TcpReceiver::new(ADDR).unwrap();
-        let mut sender1: TcpSender<int> = TcpSender::new(ADDR).unwrap();
-        let mut sender2: TcpSender<int> = TcpSender::new(ADDR).unwrap();
-
-        sender1.send(1);
-        sender2.send(2);
-        let (val1, val2) = (receiver.recv(), receiver.recv());
-        assert!((val1 == 1 && val2 == 2) || (val1 == 2 && val2 == 1));
-    }
+fn read_item<S: Decodable<Decoder, DecoderError> + Send>(stream: &mut TcpStream, size: uint) -> Result<S, ReceiverError> {
+    let data = try!(stream.read_exact(size));
+    let string = try!(String::from_utf8(data));
+    Ok(try!(decode::<S>(string.as_slice())))
 }
