@@ -16,6 +16,10 @@ use super::{SendRequest, ReceiverError};
 pub struct ClientSender<T: Encodable<Encoder<'static>, IoError> + Send>(comm::Sender<SendRequest<T>>);
 
 impl<T> super::Sender<T> for ClientSender<T> where T: Encodable<Encoder<'static>, IoError> + Send {
+    /// Send a value along the channel.
+    ///
+    /// The returned Future will only have a value available after the send has either
+    /// succeeded or failed.
     fn send(&mut self, t: T) -> Future<IoResult<()>> {
         let (fi, fo) = comm::channel();
         self.0.send((t, fi));
@@ -29,6 +33,7 @@ impl<T> super::Sender<T> for ClientSender<T> where T: Encodable<Encoder<'static>
 pub struct ClientReceiver<S: Decodable<Decoder, DecoderError> + Send>(comm::Receiver<Result<S, ReceiverError>>);
 
 impl<S> super::Receiver<S> for ClientReceiver<S> where S: Decodable<Decoder, DecoderError> + Send {
+    /// Try to receive a server response.
     fn try_recv(&mut self) -> Result<S, ReceiverError> {
         self.0.recv()
     }
@@ -36,10 +41,8 @@ impl<S> super::Receiver<S> for ClientReceiver<S> where S: Decodable<Decoder, Dec
 
 /// Create a channel over a new TCP connection.
 ///
-/// There must already be a server listening at the specified address,
-/// otherwise this method will fail. Upon success a pair of channels
-/// is returned: one for sending messages, and one for receiving
-/// responses.
+/// This method attempts to connect to an existing server at the specified
+/// address, and returns a sender/receiver pair if the connection was made.
 #[allow(unused_must_use)]
 pub fn client_channel<A: ToSocketAddr, T: Encodable<Encoder<'static>, IoError> + Send, S: Decodable<Decoder, DecoderError> + Send>(addr: A) -> IoResult<(ClientSender<T>, ClientReceiver<S>)> {
     let stream = Arc::new(Mutex::new(try!(TcpStream::connect(addr))));
@@ -84,61 +87,12 @@ pub fn client_channel<A: ToSocketAddr, T: Encodable<Encoder<'static>, IoError> +
 ///
 /// The server side uses an event-based architecture, with the supported events:
 ///
-///  * `on_msg`: notification of a client message (required)
-///  * `on_new`: notification of a new client connection (optional)
-///  * `on_drop`: notification of a client hanging up (optional)
+///  * `on_msg`: notification of a client message
+///  * `on_new`: notification of a new client connection
+///  * `on_drop`: notification of a client hanging up
 ///
-/// The simplest use is something like this:
-///
-/// ```
-/// extern crate serialize;
-/// extern crate superchan;
-/// use superchan::tcp;
-///
-/// #[deriving(Encodable, Decodable)]
-/// enum Message {
-///     Good,
-///     Bad,
-/// }
-///
-/// #[deriving(Encodable, Decodable)]
-/// enum Response {
-///     Ok,
-///     NotOk,
-/// }
-///
-/// fn on_msg(client_id: uint, msg: Message) -> Response {
-///     match msg {
-///         Message::Good => Response::Ok,
-///         Message::Bad => Response::NotOk,
-///     }
-/// }
-///
-/// fn main() {
-///     match tcp::server_channel("127.0.0.1:8080", on_msg, |_|{}, |_|{}) {
-///         Ok(_) => (),
-///         Err(e) => println!("error: {}", e),
-///     }
-/// }
-/// ```
-///
-/// This spins up a new server that listens for incoming connections at `127.0.0.1:8080`
-/// and calls `on_msg()` whenever it receives one.
-///
-/// Notice how the last two parameters received empty closures. Those can both be
-/// replaced by functions that take a `uint` representing the client id and return
-/// nothing, and will be called when the client first connects, and when they hang up
-/// respectively., e.g.
-///
-/// ```ignore
-/// fn on_connect(client_id: uint) { ... }
-/// fn on_drop(client_id: uint) { ... }
-///
-/// fn main() {
-///     tcp::server_channel("127.0.0.1:8080", on_msg, on_connect, on_drop);
-/// }
-/// ```
-///
+/// Events that you don't care about can be ignored by passing in `|_|{}`, which is an
+/// empty closure.
 #[allow(unused_must_use)]
 pub fn server_channel<A, T, S, H, N, D>(addr: A, on_msg: H, on_new: N, on_drop: D) -> IoResult<()>
         where A: ToSocketAddr,
@@ -205,6 +159,7 @@ pub fn server_channel<A, T, S, H, N, D>(addr: A, on_msg: H, on_new: N, on_drop: 
     Ok(())
 }
 
+/// Utility method for reading a value from a stream.
 fn read_item<S: Decodable<Decoder, DecoderError> + Send>(stream: &mut TcpStream, size: uint) -> Result<S, ReceiverError> {
     let data = try!(stream.read_exact(size));
     let string = try!(String::from_utf8(data));

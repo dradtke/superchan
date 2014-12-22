@@ -3,8 +3,92 @@
 //! This crate provides a set of types that mimick Rust's native channels,
 //! but which can be used to communicate over a network.
 //!
-//! This is only an experimental crate, and its API is still subject to very drastic changes.
-//! Use at your own risk. =)
+//! Example of using `superchan` to spin up a server:
+//!
+//! ```
+//! // server.rs
+//! extern crate serialize;
+//! extern crate superchan;
+//! use superchan::tcp::server_channel;
+//!
+//! #[deriving(Encodable, Decodable)]
+//! enum Message {
+//!     Good,
+//!     Bad,
+//! }
+//!
+//! #[deriving(Encodable, Decodable)]
+//! enum Response {
+//!     Ok,
+//!     NotOk,
+//! }
+//!
+//! // Take the client's message and return a response.
+//! // This version is obviously pretty contrived, but
+//! // you get the idea.
+//! fn on_msg(client_id: uint, msg: Message) -> Response {
+//!     match msg {
+//!         Message::Good => Response::Ok,
+//!         Message::Bad => Response::NotOk,
+//!     }
+//! }
+//!
+//! fn on_new(client_id: uint) {
+//!     println!("New client has connected: {}", client_id);
+//! }
+//!
+//! fn on_drop(client_id: uint) {
+//!     println!("Client has disconnected: {}", client_id);
+//! }
+//!
+//! fn main() {
+//!     if let Err(e) = server_channel("127.0.0.1:8080", on_msg, on_new, on_drop) {
+//!         println!("Failed to start server: {}", e);
+//!     }
+//! }
+//! ```
+//!
+//! And creating a client to connect to it (ideally, the shared `Message` and `Response`
+//! enums would be in a separate crate that is referenced by both, but they're
+//! duplicated here for simplicity):
+//!
+//! ```
+//! // client.rs
+//! extern crate serialize;
+//! extern crate superchan;
+//! use superchan::{Sender, Receiver};
+//! use superchan::tcp::client_channel;
+//!
+//! #[deriving(Encodable, Decodable)]
+//! enum Message {
+//!     Good,
+//!     Bad,
+//! }
+//!
+//! #[deriving(Encodable, Decodable)]
+//! enum Response {
+//!     Ok,
+//!     NotOk,
+//! }
+//!
+//! fn main() {
+//!     let (mut sender, mut receiver) = match client_channel("127.0.0.1:8080") {
+//!         Ok(chans) => chans,
+//!         Err(e) => { println!("Failed to connect to server: {}", e); return; },
+//!     };
+//!
+//!     // Now we can communicate with the server along the received channels.
+//!     sender.send(Message::Good);
+//!     match receiver.recv() {
+//!         Response::Ok => println!("ok!"),
+//!         Response::NotOk => println!("not ok..."),
+//!     }
+//! }
+//! ```
+//!
+//! TCP is the only supported protocol right now, but UDP and maybe others will be added soon.
+//! When that happens, the only difference needed should be the `use` statement by replacing
+//! "tcp" with the protocol of your choice.
 
 #![crate_name = "superchan"]
 #![experimental]
@@ -32,6 +116,8 @@ pub trait Sender<T> where T: Encodable<Encoder<'static>, IoError> + Send {
 pub trait Receiver<S> where S: Decodable<Decoder, DecoderError> + Send {
     fn try_recv(&mut self) -> Result<S, ReceiverError>;
 
+    /// Receive a server response. Unlike `try_recv()`, this method panics
+    /// if an error is encountered.
     fn recv(&mut self) -> S {
         match self.try_recv() {
             Ok(val) => val,

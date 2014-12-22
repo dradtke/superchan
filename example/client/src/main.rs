@@ -7,8 +7,7 @@ use superchan::{Sender, Receiver};
 use superchan::tcp;
 
 fn main() {
-    println!("Connecting to server...");
-    let (mut sender, mut receiver): (tcp::ClientSender<Message>, tcp::ClientReceiver<Response>) = match tcp::client_channel("127.0.0.1:8080") {
+    let (mut sender, mut receiver) = match tcp::client_channel("127.0.0.1:8080") {
         Ok(chans) => chans,
         Err(e) => { println!("{}", e); return; },
     };
@@ -21,6 +20,7 @@ fn main() {
         match stdin.read_line() {
             Ok(line) => {
                 let s = line.as_slice().trim().into_string();
+
                 if s.len() == 0 {
                     sender.send(Message::Blank);
                 } else if let Some(i) = from_str::<int>(s.as_slice()) {
@@ -28,7 +28,11 @@ fn main() {
                 } else {
                     sender.send(Message::String(s));
                 }
-                println!("response: {}", receiver.recv());
+
+                // Type annotation needed here because we're not matching on
+                // specific Response::* values.
+                let resp: Response = receiver.recv();
+                println!("response: {}", resp);
             },
             Err(e) => println!("error: {}", e),
         }

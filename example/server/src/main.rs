@@ -23,5 +23,7 @@ fn dropped_client(id: uint) {
 #[allow(unused_must_use)]
 fn main() {
     println!("Starting server...");
-    server_channel("127.0.0.1:8080", handle_client, new_client, dropped_client);
+    if let Err(e) = server_channel("127.0.0.1:8080", handle_client, new_client, dropped_client) {
+        println!("Error: {}", e);
+    }
 }
