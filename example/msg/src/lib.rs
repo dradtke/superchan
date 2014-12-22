@@ -7,7 +7,7 @@ pub enum Message {
     String(String),
 }
 
-#[deriving(Encodable, Decodable, Show)]
+#[deriving(Encodable, Decodable, Show, Copy)]
 pub enum Response {
     Ok,
     NotOk,

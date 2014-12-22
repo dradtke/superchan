@@ -40,6 +40,8 @@ pub trait Receiver<S> where S: Decodable<Decoder, DecoderError> + Send {
     }
 }
 
+/// ReceiverError is an enumeration of the various types of errors that
+/// a Receiver could run in to.
 #[deriving(Show)]
 pub enum ReceiverError {
     EndOfFile,
