@@ -8,7 +8,7 @@ use std::comm;
 use std::io::{IoError, IoErrorKind, IoResult, TcpStream};
 use std::io::net::ip::ToSocketAddr;
 use std::sync::{Arc, Future, Mutex};
-use std::task;
+use std::thread::Thread;
 use super::{SendRequest, ReceiverError};
 
 /// A client sender for sending messages over TCP.
@@ -49,7 +49,7 @@ pub fn client_channel<A: ToSocketAddr, T: Encodable<Encoder<'static>, IoError> +
     let (ss, sr) = comm::channel::<SendRequest<T>>();
     {
         let stream = stream.clone();
-        spawn(move || {
+        Thread::spawn(move || {
             for (t, fi) in sr.iter() {
                 let mut stream = stream.lock();
                 let e = Encoder::buffer_encode(&t);
@@ -64,7 +64,7 @@ pub fn client_channel<A: ToSocketAddr, T: Encodable<Encoder<'static>, IoError> +
     let (rs, rr) = comm::channel::<Result<S, ReceiverError>>();
     {
         let stream = stream.clone();
-        spawn(move || {
+        Thread::spawn(move || {
             loop {
                 {
                     let mut stream = stream.lock();
@@ -76,7 +76,7 @@ pub fn client_channel<A: ToSocketAddr, T: Encodable<Encoder<'static>, IoError> +
                         Err(e) => rs.send(Err(ReceiverError::IoError(e))),
                     }
                 }
-                task::deschedule();
+                Thread::yield_now();
             }
         });
     }
@@ -123,7 +123,7 @@ pub fn server_channel<A, T, S, H, N, D>(addr: A, on_msg: H, on_new: N, on_drop: 
                     };
                     on_new(client_id);
                     let freed_clients = freed_clients.clone();
-                    spawn(move || {
+                    Thread::spawn(move || {
                         loop {
                             let item = match conn.read_le_uint() {
                                 Ok(size) => match read_item(&mut conn, size) {

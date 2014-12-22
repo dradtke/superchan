@@ -5,7 +5,7 @@
 //!
 //! Example of using `superchan` to spin up a server:
 //!
-//! ```
+//! ```ignore
 //! // server.rs
 //! extern crate serialize;
 //! extern crate superchan;
@@ -52,7 +52,7 @@
 //! enums would be in a separate crate that is referenced by both, but they're
 //! duplicated here for simplicity):
 //!
-//! ```
+//! ```ignore
 //! // client.rs
 //! extern crate serialize;
 //! extern crate superchan;
