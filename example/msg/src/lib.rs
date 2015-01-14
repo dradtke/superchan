@@ -1,13 +1,13 @@
-extern crate serialize;
+extern crate "rustc-serialize" as rustc_serialize;
 
-#[deriving(Encodable, Decodable)]
+#[derive(RustcEncodable, RustcDecodable)]
 pub enum Message {
     Blank,
-    Int(int),
+    Int(i32),
     String(String),
 }
 
-#[deriving(Encodable, Decodable, Show, Copy)]
+#[derive(RustcEncodable, RustcDecodable, Show, Copy)]
 pub enum Response {
     Ok,
     NotOk,

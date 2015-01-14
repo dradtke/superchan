@@ -1,7 +1,7 @@
 [package]
 
 name = "superchan"
-version = "0.0.6"
+version = "0.0.7"
 authors = ["Damien Radtke <dradtke@channeliq.com>"]
 
 description = "Communicate over a network using a channel-like API."
@@ -13,3 +13,4 @@ license = "MIT"
 [dependencies]
 
 rustc-serialize = "0.2.7"
+bincode = "0.0.6"
