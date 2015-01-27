@@ -13,4 +13,4 @@ license = "MIT"
 [dependencies]
 
 rustc-serialize = "0.2.7"
-bincode = "0.0.6"
+bincode = "0.0.7"
